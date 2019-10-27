@@ -430,7 +430,7 @@ void
 xflip(void) {
 	if(xw.win == NULL) return;
     //printf("flip\n");
-#ifdef RS97_SCREEN_480
+#ifdef RS97_NO
     SDL_Surface* buffer = SDL_CreateRGBSurface(SDL_SWSURFACE, xw.w, xw.h, 16, screen->format->Rmask, screen->format->Gmask, screen->format->Bmask, screen->format->Amask);
     SDL_BlitSurface(xw.win, NULL, buffer, NULL);
     draw_keyboard(buffer);
@@ -440,10 +440,10 @@ xflip(void) {
     for(int j = 0; j < buffer->h; j++) {
         memcpy(screen->pixels + j * 2 * screen->pitch, buffer->pixels + j * buffer->pitch, buffer->w * 2);
         memcpy(screen->pixels + (j * 2 + 1) * screen->pitch, buffer->pixels + j * buffer->pitch, buffer->w * 2);
-        /*for(int i = 0; i < buffer->w; i++) {
+        for(int i = 0; i < buffer->w; i++) {
             SDL_Rect rect = {i * 4, j * 4, 4, 4};
             SDL_FillRect(screen, &rect, ((unsigned short*)buffer->pixels)[j * (buffer->pitch >> 1) + i]);
-        }*/
+        }
     }
     SDL_UnlockSurface(buffer);
     SDL_UnlockSurface(screen);
@@ -457,7 +457,7 @@ xflip(void) {
 		fputs("FLIP ERROR\n", stderr);
 		exit(EXIT_FAILURE);
 	}
-#ifdef RS97_SCREEN_480
+#ifdef RS97_NO
     SDL_FreeSurface(buffer);
 #endif
 }
@@ -2309,6 +2309,7 @@ sdlinit(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	fprintf(stderr, "SDL font\n");
 	SDL_EnableUNICODE(1);
 
 	/*if(TTF_Init() == -1) {
@@ -2326,6 +2327,7 @@ sdlinit(void) {
 	usedfont = (opt_font == NULL)? font : opt_font;
 	sdlloadfonts(usedfont, fontsize);
 
+	fprintf(stderr, "SDL font\n");
 	/* colors */
 	initcolormap();
 
@@ -2456,6 +2458,7 @@ xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
 
 	if(xw.win != NULL) 
 		SDL_FillRect(xw.win, &r, SDL_MapRGB(xw.win->format, bg->r, bg->g, bg->b));
+		//draw_keyboard(xw.win);
 
 /*#ifdef USE_ANTIALIASING
 		if(!(text_surface=TTF_RenderUTF8_Shaded(font,s,*fg, *bg))) {
@@ -2926,10 +2929,10 @@ main(int argc, char *argv[]) {
 		if(atexit(sdlshutdown)) {
 			fprintf(stderr,"Unable to register SDL_Quit atexit\n");
 		}
-
+		/*
 		char path[PATH_MAX];
 		realpath(dirname(argv[0]), path);
-		snprintf(preload_libname, PATH_MAX + 17, "%s/libst-preload.so", path);
+		snprintf(preload_libname, PATH_MAX + 17, "%s/libst-preload.so", path); */
 
 run:
     setlocale(LC_CTYPE, "");

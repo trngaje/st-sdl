@@ -16,8 +16,14 @@
 #define KEY_SHIFT SDLK_TAB // L
 #define KEY_LOCATION SDLK_LSHIFT // Y
 #define KEY_ACTIVATE SDLK_SPACE // X
-#define KEY_QUIT SDLK_ESCAPE // SELECT
+#define KEY_QUIT SDLK_HOME // SELECT
 #define KEY_HELP SDLK_RETURN // START
+#define KEY_TAB SDLK_ESCAPE // START
+#define KEY_RETURN SDLK_RETURN // START
+#define KEY_ARROW_LEFT	SDLK_PAGEUP //LEFT
+#define KEY_ARROW_RIGHT	SDLK_PAGEDOWN //RIGHT
+#define KEY_ARROW_UP	SDLK_KP_DIVIDE //LEFT
+#define KEY_ARROW_DOWN	SDLK_KP_PERIOD //RIGHT
 
 /*#else
 
@@ -96,14 +102,19 @@ void init_keyboard() {
 char* help = 
 "How to use:\n"
 "  ARROWS: select key from keyboard\n"
-"  A: press key\n"
-"  B: toggle key (useful for shift/ctrl...)\n"
-"  L: shift\n"
-"  R: backspace\n"
-"  Y: change keyboard location (top/bottom)\n"
-"  X: show / hide keyboard\n"
-"  SELECT: quit\n"
-"  START: show this help\n\n"
+"  A:  press key\n"
+"  B:  toggle key (useful for shift/ctrl...)\n"
+"  L1: shift\n"
+"  R2: backspace\n"
+"  Y:  change keyboard location (top/bottom)\n"
+"  X:  show / hide keyboard\n"
+"  START:  enter\n"
+"  SELECT: tab\n"
+"  L2:     left\n"
+"  R2:     right\n"
+"  L3:     up\n"
+"  R3:     down\n"
+"  POWER:  quit\n\n"
 "Cheatcheet (tutorial at www.shellscript.sh):\n"
 "  TAB key         complete path\n"
 "  UP/DOWN keys    navigate history\n"
@@ -113,12 +124,6 @@ char* help =
 "  cp <f> <d>      copy files (dest can be dir)\n"
 "  mv <f> <d>      move files (dest can be dir)\n"
 "  rm <f>          remove files (use -rf for dir)\n"
-"  top             see running processes (q to quit)\n"
-"  more <f>        see content of text file\n"
-"  file <f>        see type of file\n"
-"  opkg install <f.ipk>  install package\n"
-"  opkg remove <f>       remove package\n"
-"  grep <pattern> <f>    find in files\n"
 ;
 
 void draw_keyboard(SDL_Surface* surface) {
@@ -129,9 +134,9 @@ void draw_keyboard(SDL_Surface* surface) {
 	unsigned short sel_toggled_color = SDL_MapRGB(surface->format, 255, 255, 128);
 	unsigned short toggled_color = SDL_MapRGB(surface->format, 192, 192, 0);
 	if(show_help) {
-		SDL_FillRect(surface, NULL, bg_color);
+		SDL_FillRect(surface, NULL, text_color);
 		draw_string(surface, "SDL Terminal by Benob, based on st-sdl", 42, 10, sel_toggled_color);
-		draw_string(surface, help, 8, 28, sel_color);
+		draw_string(surface, help, 8, 30, sel_color);
 		return;
 	}
 	if(!active) return;
@@ -262,8 +267,8 @@ int handle_keyboard_event(SDL_Event* event) {
 			// do nothing
 		} else if(event->key.keysym.sym == KEY_QUIT) {
 			exit(0);
-		} else if(event->key.keysym.sym == KEY_HELP) {
-			show_help = 1;
+		/*} else if(event->key.keysym.sym == KEY_HELP) {
+			show_help = 1;*/
 		} else if(event->key.keysym.sym == KEY_UP && selected_j > 0) {
 			selected_i = compute_new_col(visual_offset, selected_j, selected_j - 1);
 			selected_j--;
@@ -286,6 +291,18 @@ int handle_keyboard_event(SDL_Event* event) {
 			location = !location;
 		} else if(event->key.keysym.sym == KEY_BACKSPACE) {
 			simulate_key(SDLK_BACKSPACE, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_ARROW_UP) {
+			simulate_key(SDLK_UP, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_ARROW_DOWN) {
+			simulate_key(SDLK_DOWN, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_ARROW_LEFT) {
+			simulate_key(SDLK_LEFT, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_ARROW_RIGHT) {
+			simulate_key(SDLK_RIGHT, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_TAB) {
+			simulate_key(SDLK_TAB, STATE_TYPED);
+		} else if(event->key.keysym.sym == KEY_RETURN) {
+			simulate_key(SDLK_RETURN, STATE_TYPED);
 		} else if(event->key.keysym.sym == KEY_TOGGLE) {
 			toggled[selected_j][selected_i] = 1 - toggled[selected_j][selected_i];
 			if(toggled[selected_j][selected_i]) simulate_key(keys[shifted][selected_j][selected_i], STATE_DOWN);
@@ -301,6 +318,8 @@ int handle_keyboard_event(SDL_Event* event) {
 			} else {
 				simulate_key(key, STATE_TYPED);
 			}
+		} else { 
+			fprintf(stderr,"key: %d",event->key.keysym.sym);
 		}
 	} else if(event->key.type == SDL_KEYUP || event->key.state == SDL_RELEASED) {
 		if(show_help) {

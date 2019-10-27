@@ -1,15 +1,15 @@
 # st - simple terminal
 # See LICENSE file for copyright and license details.
 
-include config_rs97.mk
+include config_rg350.mk
 
 SRC = st.c keyboard.c font.c msg_queue.c
 OBJ = ${SRC:.c=.o}
 
-all: options st libst-preload.so sdl_test
+all: options st 
 
 libst-preload.so: st-preload.o msg_queue.o
-	${CC} -shared -o $@ $^
+	${CC}  -shared -o $@ $^ $(CFLAGS)
 
 sdl_test: sdl_test.o
 
@@ -23,13 +23,13 @@ config.h:
 	cp config.def.h config.h
 
 .c.o:
-	@echo CC $<
+	@echo $(CC) $<
 	@${CC} -c ${CFLAGS} $<
 
 ${OBJ}: config.h config.mk
 
 st: ${OBJ}
-	@echo CC -o $@
+	@echo $(CC) -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
