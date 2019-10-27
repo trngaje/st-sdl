@@ -1,6 +1,6 @@
 #!/bin/sh
 
-OPK_NAME=st.opk
+OPK_NAME=st-`date +'%Y%m%d'`.opk
 
 echo ${OPK_NAME}
 
