@@ -22,9 +22,15 @@
 #include <unistd.h>
 #include <libgen.h>
 
+
+//#define ENABLE_TTF
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_thread.h>
-//#include <SDL/SDL_ttf.h>
+
+#ifdef ENABLE_TTF
+#include <SDL/SDL_ttf.h>
+#endif
 
 #include "font.h"
 #include "keyboard.h"
@@ -252,12 +258,17 @@ static void xzoom(const Arg *);
 #include "config.h"
 
 SDL_Surface* screen;
+#ifdef MIYOOMINI
+SDL_Surface* screen2;
+#endif
 char preload_libname[PATH_MAX + 17];
 
 /* Drawing Context */
 typedef struct {
 	SDL_Color colors[LEN(colormap) < 256 ? 256 : LEN(colormap)];
-	//TTF_Font *font, *ifont, *bfont, *ibfont;
+#ifdef ENABLE_TTF	
+	TTF_Font *font, *ifont, *bfont, *ibfont;
+#endif
 } DC;
 
 static void die(const char *, ...);
@@ -426,6 +437,53 @@ xcalloc(size_t nmemb, size_t size) {
 	return p;
 }
 
+#ifdef MIYOOMINI
+// for miyoo mini
+void rotate180(SDL_Surface *src, SDL_Surface *dst)
+{
+#if 1	
+	uint16_t* BlockDst;
+    uint16_t* BlockSrc;
+	
+	//fprintf(stderr, "[trngaje] dst pitch = %d(%d), src pitch = %d(%d)\n", dst->pitch, dst->format->BytesPerPixel, src->pitch, src->format->BytesPerPixel);
+	
+	for (int i=0; i < (src->h); i++) {	
+		BlockDst = (uint16_t*)(dst->pixels) + ((dst->pitch/2) * (dst->h - i));
+		BlockDst--;
+		BlockSrc = (uint16_t*)(src->pixels) + ((src->pitch/2) * i);
+		for (int j=0; j < (src->w); j++) {	
+			*BlockDst = *BlockSrc;
+			BlockDst--;
+			BlockSrc++;
+		}
+    }
+#else
+	uint32_t* BlockDst;
+    uint16_t* BlockSrc;
+	uint32_t r,g,b,value;
+	//fprintf(stderr, "[trngaje] dst pitch = %d(%d), src pitch = %d(%d)\n", dst->pitch, dst->format->BytesPerPixel, src->pitch, src->format->BytesPerPixel);
+	
+	for (int i=0; i < (src->h); i++) {	
+		BlockDst = (uint32_t*)(dst->pixels) + ((dst->pitch/4) * (dst->h - i));
+		BlockDst--;
+		BlockSrc = (uint16_t*)(src->pixels) + ((src->pitch/2) * i);
+
+		// convert 16bit to 32bit and rotate 180 degrees
+		value = ((i & 0xff) << 16) | ((i & 0xff) << 8) | (i & 0xff);
+		for (int j=0; j < (src->w); j++) {	
+			r = ((*BlockSrc) & 0xf800) << 8;
+			g = ((*BlockSrc) & 0x7e0) << 5;
+			b = ((*BlockSrc) & 0x1f) << 3;
+			value = r | g | b;
+			*BlockDst = value; //*BlockSrc;
+			BlockDst--;
+			BlockSrc++;
+		}
+    }	
+#endif
+}
+#endif
+
 void
 xflip(void) {
 	if(xw.win == NULL) return;
@@ -452,11 +510,20 @@ xflip(void) {
 		draw_keyboard(screen);
 #endif
 
+#ifdef MIYOOMINI
+	rotate180(screen, screen2);
+	if(SDL_Flip(screen2)) {
+		fputs("FLIP ERROR\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+#else
 	if(SDL_Flip(screen)) {
 	//if(SDL_Flip(xw.win)) {
 		fputs("FLIP ERROR\n", stderr);
 		exit(EXIT_FAILURE);
 	}
+#endif
+
 #ifdef RS97_NO
     SDL_FreeSurface(buffer);
 #endif
@@ -2241,40 +2308,55 @@ xclear(int x1, int y1, int x2, int y2) {
 
 void
 sdlloadfonts(char *fontstr, int fontsize) {
-	//char *bfontstr;
+#ifdef ENABLE_TTF
+	char *bfontstr=fontstr;
+#endif
 
 	usedfont = fontstr;
 	usedfontsize = fontsize;
 
 	/* XXX: Strongly assumes the original setting had a : in it! */
-	/*if((bfontstr = strchr(fontstr, ':'))) {
+#ifdef ENABLE_TTF
+
+	if((bfontstr = strchr(fontstr, ':'))) {
 		*bfontstr = '\0';
 		bfontstr++;
 	} else {
 		bfontstr = strchr(fontstr, '\0');
 		bfontstr++;
-	}*/
+	}
 
-	/*if(dc.font) TTF_CloseFont(dc.font);
+	if(dc.font) TTF_CloseFont(dc.font);
 	dc.font = TTF_OpenFont(fontstr, fontsize);
-    fprintf(stderr, "%s\n", fontstr);*/
-	//TTF_SizeUTF8(dc.font, "O", &xw.cw, &xw.ch);
-    xw.cw = 6;
-    xw.ch = 8;
+    fprintf(stderr, "fontstr=%s\n", fontstr);
+	TTF_SizeUTF8(dc.font, "O", &xw.cw, &xw.ch);
+#else
+	
+	#ifdef KORFONT
+	xw.cw = 6;
+	xw.ch = 12;
+	#else
+	xw.cw = 6;
+	xw.ch = 8;
+	#endif
+#endif
 
-	/*if(dc.ifont) TTF_CloseFont(dc.ifont);
+
+#ifdef ENABLE_TTF
+	if(dc.ifont) TTF_CloseFont(dc.ifont);
 	dc.ifont = TTF_OpenFont(fontstr, fontsize);
-    fprintf(stderr, "%s\n", fontstr);
+    fprintf(stderr, "fontstr=%s\n", fontstr);
 	TTF_SetFontStyle(dc.ifont, TTF_STYLE_ITALIC);
 
 	if(dc.bfont) TTF_CloseFont(dc.bfont);
 	dc.bfont = TTF_OpenFont(bfontstr, fontsize);
-    fprintf(stderr, "%s\n", bfontstr);
+    fprintf(stderr, "bfontstr=%s\n", bfontstr);
 
 	if(dc.ibfont) TTF_CloseFont(dc.ibfont);
 	dc.ibfont = TTF_OpenFont(bfontstr, fontsize);
-    fprintf(stderr, "%s\n", bfontstr);
-	TTF_SetFontStyle(dc.ibfont, TTF_STYLE_ITALIC);*/
+    fprintf(stderr, "bfontstr=%s\n", bfontstr);
+	TTF_SetFontStyle(dc.ibfont, TTF_STYLE_ITALIC);
+#endif
 }
 
 void
@@ -2302,24 +2384,28 @@ sdlinit(void) {
 	const SDL_VideoInfo *vi;
 	fprintf(stderr, "SDL init\n");
 
-	//dc.font = dc.ifont = dc.bfont = dc.ibfont = NULL;
-
+#ifdef ENABLE_TTF
+	dc.font = dc.ifont = dc.bfont = dc.ibfont = NULL;
+#endif
 	if(SDL_Init(SDL_INIT_VIDEO) == -1) {
 		fprintf(stderr,"Unable to initialize SDL: %s\n", SDL_GetError());
 		exit(EXIT_FAILURE);
 	}
 
-	fprintf(stderr, "SDL font\n");
-	SDL_EnableUNICODE(1);
 
-	/*if(TTF_Init() == -1) {
+	//SDL_EnableUNICODE(1); // segmentation fault
+
+#ifdef ENABLE_TTF
+	if(TTF_Init() == -1) {
 		printf("TTF_Init: %s\n", TTF_GetError());
 		exit(EXIT_FAILURE);
 	}
 
 	if(atexit(TTF_Quit)) {
 		fprintf(stderr,"Unable to register TTF_Quit atexit\n");
-	}*/
+	}
+#endif
+
 
 	vi = SDL_GetVideoInfo();
 
@@ -2350,7 +2436,15 @@ sdlinit(void) {
 
     //xw.w = initial_width;
     //xw.h = initial_height;
+#ifdef MIYOOMINI
+	if(!(screen2 = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE))) {
+		fprintf(stderr,"Unable to set video mode: %s\n", SDL_GetError());
+		exit(EXIT_FAILURE);
+	}
+	screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, screen2->format->Rmask, screen2->format->Gmask, screen2->format->Bmask, screen2->format->Amask);
+    xw.win = SDL_CreateRGBSurface(SDL_SWSURFACE, xw.w, xw.h, 16, screen2->format->Rmask, screen2->format->Gmask, screen2->format->Bmask, screen2->format->Amask);
 
+#else
 #ifdef RS97_SCREEN_480
 	if(!(screen = SDL_SetVideoMode(320, 480, 16, SDL_SWSURFACE | SDL_DOUBLEBUF))) {
 #else
@@ -2360,7 +2454,8 @@ sdlinit(void) {
 		exit(EXIT_FAILURE);
 	}
     xw.win = SDL_CreateRGBSurface(SDL_SWSURFACE, xw.w, xw.h, 16, screen->format->Rmask, screen->format->Gmask, screen->format->Bmask, screen->format->Amask);
-
+#endif
+	
 	sdlresettitle();
 	//
 	// TODO: might need to use system threads
@@ -2370,6 +2465,7 @@ sdlinit(void) {
 	}
 
 	expose(NULL);
+
 	//vi = SDL_GetVideoInfo();
 	//cresize(vi->current_w, vi->current_h);
 
@@ -2384,7 +2480,9 @@ void
 xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
 	int winx = borderpx + x * xw.cw, winy = borderpx + y * xw.ch,
 	    width = charlen * xw.cw;
-	//TTF_Font *font = dc.font;
+#ifdef ENABLE_TTF
+	TTF_Font *font = dc.font;
+#endif
 	SDL_Color *fg = &dc.colors[base.fg], *bg = &dc.colors[base.bg],
 	          *temp, revfg, revbg;
 
@@ -2407,14 +2505,17 @@ xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
 		 *	196 - 231 – highest 256 color cube
 		 *	252 - 255 – brightest colors in greyscale
 		 */
-		//font = dc.bfont;
+#ifdef ENABLE_TTF
+		font = dc.bfont;
+#endif
 	}
 
-	/*if(base.mode & ATTR_ITALIC)
+#ifdef ENABLE_TTF
+	if(base.mode & ATTR_ITALIC)
 		font = dc.ifont;
 	if((base.mode & ATTR_ITALIC) && (base.mode & ATTR_BOLD))
-		font = dc.ibfont;*/
-
+		font = dc.ibfont;
+#endif
 	if(IS_SET(MODE_REVERSE)) {
 		if(fg == &dc.colors[defaultfg]) {
 			fg = &dc.colors[defaultbg];
@@ -2453,14 +2554,16 @@ xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
 		xclear(winx, winy + xw.ch, winx + width, xw.h);
 
 	{
-		//SDL_Surface *text_surface;
+#ifdef ENABLE_TTF
+		SDL_Surface *text_surface;
+#endif
 		SDL_Rect r = {winx, winy, width, xw.ch};
 
 	if(xw.win != NULL) 
 		SDL_FillRect(xw.win, &r, SDL_MapRGB(xw.win->format, bg->r, bg->g, bg->b));
 		//draw_keyboard(xw.win);
-
-/*#ifdef USE_ANTIALIASING
+#ifdef ENABLE_TTF
+#ifdef USE_ANTIALIASING
 		if(!(text_surface=TTF_RenderUTF8_Shaded(font,s,*fg, *bg))) {
 #else
 		if(!(text_surface=TTF_RenderUTF8_Solid(font,s,*fg))) {
@@ -2470,7 +2573,8 @@ xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
 		} else {
 			SDL_BlitSurface(text_surface,NULL,xw.win,&r);
 			SDL_FreeSurface(text_surface);
-		}*/
+		}
+#else
         int xs = r.x;
 				if(xw.win != NULL) 
 					draw_string(xw.win, s, xs, r.y, SDL_MapRGB(xw.win->format, fg->r, fg->g, fg->b));
@@ -2480,10 +2584,13 @@ xdraws(char *s, Glyph base, int x, int y, int charlen, int bytelen) {
             xs += 6;
             s++;
         }*/
-
+#endif
 		if(base.mode & ATTR_UNDERLINE) {
-			//r.y += TTF_FontAscent(font) + 1;
+#ifdef ENABLE_TTF
+			r.y += TTF_FontAscent(font) + 1;
+#else
             r.y += xw.ch;
+#endif
 			r.h = 1;
 			if(xw.win != NULL) 
 				SDL_FillRect(xw.win, &r, SDL_MapRGB(xw.win->format, fg->r, fg->g, fg->b));
@@ -2936,7 +3043,12 @@ main(int argc, char *argv[]) {
 
 run:
     setlocale(LC_CTYPE, "");
-    tnew((initial_width - 2) / 6, (initial_height - 2) / 8);
+#ifdef KORFONT
+	tnew(initial_width / 6, initial_height / 12);
+#else
+	tnew((initial_width - 2) / 6, (initial_height - 2) / 8);
+#endif
+
     ttynew();
     sdlinit(); /* Must have TTY before cresize */
     init_keyboard();

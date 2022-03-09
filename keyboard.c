@@ -6,6 +6,26 @@
 
 //#ifdef RS97
 
+#ifdef MIYOOMINI
+#define KEY_UP SDLK_UP
+#define KEY_DOWN SDLK_DOWN
+#define KEY_LEFT SDLK_LEFT
+#define KEY_RIGHT SDLK_RIGHT
+#define KEY_ENTER SDLK_SPACE // A
+#define KEY_TOGGLE SDLK_LCTRL // B
+#define KEY_BACKSPACE SDLK_t // R
+#define KEY_SHIFT SDLK_e // L
+#define KEY_LOCATION SDLK_LALT // Y
+#define KEY_ACTIVATE SDLK_LSHIFT // X
+#define KEY_QUIT SDLK_ESCAPE // Function
+#define KEY_HELP SDLK_RETURN // START
+#define KEY_TAB SDLK_RCTRL // SELECT
+#define KEY_RETURN SDLK_t // R
+#define KEY_ARROW_LEFT	SDLK_TAB //LEFT
+#define KEY_ARROW_RIGHT	SDLK_BACKSPACE //RIGHT
+#define KEY_ARROW_UP	SDLK_KP_DIVIDE //LEFT
+#define KEY_ARROW_DOWN	SDLK_KP_PERIOD //RIGHT
+#else
 #define KEY_UP SDLK_UP
 #define KEY_DOWN SDLK_DOWN
 #define KEY_LEFT SDLK_LEFT
@@ -24,6 +44,7 @@
 #define KEY_ARROW_RIGHT	SDLK_PAGEDOWN //RIGHT
 #define KEY_ARROW_UP	SDLK_KP_DIVIDE //LEFT
 #define KEY_ARROW_DOWN	SDLK_KP_PERIOD //RIGHT
+#endif
 
 /*#else
 
@@ -99,6 +120,23 @@ void init_keyboard() {
 
 }
 
+#ifdef KORFONT
+char* help = 
+"사용방법:\n"
+"  DPAD: 키보드에서 입력할 키를 선택\n"
+"  A:  키를 입력\n"
+"  B:  키를 토글 (shift/ctrl 에 유용함)\n"
+"  L1: shift\n"
+"  R1: backspace\n"
+"  Y:  키보드 위치 바꾸기 (위/아래)\n"
+"  X:  키보드 표시/감추기\n"
+"  START:  enter\n"
+"  SELECT: tab\n"
+"  L2:     left\n"
+"  R2:     right\n"
+"  F:  종료\n\n"
+;
+#else
 char* help = 
 "How to use:\n"
 "  ARROWS: select key from keyboard\n"
@@ -125,6 +163,7 @@ char* help =
 "  mv <f> <d>      move files (dest can be dir)\n"
 "  rm <f>          remove files (use -rf for dir)\n"
 ;
+#endif
 
 void draw_keyboard(SDL_Surface* surface) {
 	unsigned short bg_color = SDL_MapRGB(surface->format, 64, 64, 64);
@@ -135,7 +174,11 @@ void draw_keyboard(SDL_Surface* surface) {
 	unsigned short toggled_color = SDL_MapRGB(surface->format, 192, 192, 0);
 	if(show_help) {
 		SDL_FillRect(surface, NULL, text_color);
+#ifdef KORFONT
+		draw_string(surface, "SDL 터미널 한글 버젼 by trngaje", 42, 10, sel_toggled_color);
+#else
 		draw_string(surface, "SDL Terminal by Benob, based on st-sdl", 42, 10, sel_toggled_color);
+#endif
 		draw_string(surface, help, 8, 30, sel_color);
 		return;
 	}
@@ -148,14 +191,22 @@ void draw_keyboard(SDL_Surface* surface) {
 	int x = center_x, y = surface->h - 8 * (NUM_ROWS) - 16;
 	if(location == 1) y = 16;
 
+#ifdef KORFONT
+	SDL_Rect rect = {x - 4, y - 3, total_length + 3, NUM_ROWS * 11 + 3};
+#else
 	SDL_Rect rect = {x - 4, y - 3, total_length + 3, NUM_ROWS * 8 + 3};
+#endif
 	SDL_FillRect(surface, &rect, bg_color);
 
 	for(int j = 0; j < NUM_ROWS; j++) {
 		x = center_x;
 		for(int i = 0; i < row_length[j]; i++) {
 			int length = strlen(syms[shifted][j][i]);
+#ifdef KORFONT
+			SDL_Rect r2 = {x - 2, y - 1, length * 6 + 4, 10/*7*/};
+#else
 			SDL_Rect r2 = {x - 2, y - 1, length * 6 + 4, 7};
+#endif
 			if(toggled[j][i]) {
 				if(selected_i == i && selected_j == j) {
 					SDL_FillRect(surface, &r2, sel_toggled_color);
@@ -170,7 +221,11 @@ void draw_keyboard(SDL_Surface* surface) {
 			draw_string(surface, syms[shifted][j][i], x, y, text_color);
 			x += 6 * (length + 1);
 		}
+#ifdef KORFONT
+		y += 11;
+#else
 		y += 8;
+#endif		
 	}
 }
 
